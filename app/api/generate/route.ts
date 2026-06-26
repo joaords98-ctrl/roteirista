@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase-server";
 import { montarSystemPrompt, PerfilCriador } from "@/lib/metodologia";
 import { verificarRoteiro } from "@/lib/verificador";
@@ -53,7 +52,10 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = montarSystemPrompt(perfil, missaoRow);
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "GEMINI_API_KEY não configurada na Vercel." }, { status: 500 });
+    }
 
     const userMessage = `APURAÇÃO / TEMA:
 ${tema}
@@ -76,15 +78,30 @@ Gere o roteiro completo seguindo a metodologia. Responda APENAS em JSON válido,
   "notas_compliance": "observações sobre fontes/condicional/contraditório"
 }`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 3000,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userMessage }],
-    });
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: "user", parts: [{ text: userMessage }] }],
+          generationConfig: {
+            maxOutputTokens: 3000,
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const raw = textBlock && "text" in textBlock ? textBlock.text : "";
+    if (!geminiRes.ok) {
+      const errText = await geminiRes.text();
+      console.error("Gemini error:", errText);
+      return NextResponse.json({ error: "Erro ao chamar a IA (Gemini). Verifique a chave e a cota." }, { status: 502 });
+    }
+
+    const geminiData = await geminiRes.json();
+    const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
     const clean = raw.replace(/```json|```/g, "").trim();
 
     let roteiro;
