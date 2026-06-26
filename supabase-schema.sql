@@ -1,51 +1,49 @@
 -- ============================================================
--- SCHEMA DO BANCO — rode isto no SQL Editor do Supabase
--- (Dashboard > SQL Editor > New query > cole tudo > Run)
+-- RoterizAI — SCHEMA V1 (Missões no centro)
+-- Rode no SQL Editor do Supabase. Compatível com o schema antigo:
+-- adiciona o que falta sem apagar dados existentes.
 -- ============================================================
 
 -- CAMADA 2: perfil individual do criador
 create table if not exists perfis (
   user_id uuid primary key references auth.users(id) on delete cascade,
-  nicho text,
-  tom text,
-  abordagem text,
-  estilo text,
-  formato text,
-  aparece boolean default false,
-  duracao int default 60,
-  publico text default 'neutro',
-  dna jsonb,                       -- DNA editorial (atualizado com o tempo)
+  nicho text, tom text, abordagem text, estilo text, formato text,
+  aparece boolean default false, duracao int default 60,
+  publico text default 'neutro', dna jsonb,
   criado_em timestamptz default now()
 );
 
--- Biblioteca pessoal: roteiros gerados
+-- NÚCLEO DO SISTEMA: Missões (objetivos grandes)
+create table if not exists missoes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  titulo text not null,
+  objetivo text,
+  publico text,
+  plataforma text,
+  status text default 'ativa',
+  criado_em timestamptz default now()
+);
+
+-- Roteiros — agora vinculados a uma missão
 create table if not exists roteiros (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete cascade,
-  tema text,
-  conteudo jsonb,                  -- headline, hook, blocos, cta...
-  check_resultado jsonb,           -- resultado da verificação automática
-  passou boolean default false,
-  -- métricas reais informadas após publicar (ciclo de aprendizado)
-  views int,
-  retencao numeric,
-  compartilhamentos int,
-  seguidores_gerados int,
+  missao_id uuid references missoes(id) on delete cascade,
+  tema text, conteudo jsonb, check_resultado jsonb, passou boolean default false,
+  views int, retencao numeric, compartilhamentos int, seguidores_gerados int,
   publicado boolean default false,
   criado_em timestamptz default now()
 );
+alter table roteiros add column if not exists missao_id uuid references missoes(id) on delete cascade;
 
--- ============================================================
--- RLS (Row Level Security): cada usuário só vê os próprios dados
--- ============================================================
+-- RLS
 alter table perfis enable row level security;
+alter table missoes enable row level security;
 alter table roteiros enable row level security;
 
-create policy "perfil proprio - select" on perfis for select using (auth.uid() = user_id);
-create policy "perfil proprio - insert" on perfis for insert with check (auth.uid() = user_id);
-create policy "perfil proprio - update" on perfis for update using (auth.uid() = user_id);
-
-create policy "roteiro proprio - select" on roteiros for select using (auth.uid() = user_id);
-create policy "roteiro proprio - insert" on roteiros for insert with check (auth.uid() = user_id);
-create policy "roteiro proprio - update" on roteiros for update using (auth.uid() = user_id);
-create policy "roteiro proprio - delete" on roteiros for delete using (auth.uid() = user_id);
+do $$ begin create policy "perfil - select" on perfis for select using (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "perfil - insert" on perfis for insert with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "perfil - update" on perfis for update using (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "missao - all" on missoes for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;
+do $$ begin create policy "roteiro - all" on roteiros for all using (auth.uid() = user_id) with check (auth.uid() = user_id); exception when duplicate_object then null; end $$;

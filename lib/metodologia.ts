@@ -77,9 +77,31 @@ Apurar → Estruturar (5 blocos) → Reter (R1-R6) → Revisar (compliance) → 
 A pergunta final de todo roteiro: "Por que esta pessoa precisa me seguir AGORA?"
 `;
 
-// Monta o prompt final combinando Camada 1 (fixa) + Camada 2 (perfil do usuário)
-export function montarSystemPrompt(perfil: PerfilCriador | null): string {
+export interface ContextoMissao {
+  titulo: string;
+  objetivo?: string;
+  publico?: string;
+  plataforma?: string;
+}
+
+// Monta o prompt final: Camada 1 (fixa) + Missão (contexto) + Camada 2 (perfil)
+export function montarSystemPrompt(perfil: PerfilCriador | null, missao?: ContextoMissao | null): string {
   let prompt = METODOLOGIA_MESTRE;
+
+  if (missao) {
+    prompt += `
+
+# ============================================================
+# CONTEXTO DA MISSÃO (o objetivo maior em que este roteiro se insere)
+# Todo roteiro desta missão deve servir a este objetivo.
+# ============================================================
+- Missão: ${missao.titulo}
+- Objetivo: ${missao.objetivo || "não definido"}
+- Público desta missão: ${missao.publico || "não definido"}
+- Plataforma: ${missao.plataforma || "não definida"}
+
+Antes de escrever, pergunte: este roteiro aproxima o criador do objetivo da missão?`;
+  }
 
   if (perfil) {
     prompt += `

@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
@@ -42,7 +43,7 @@ export default function ScriptPage() {
 
   return (
     <div className="min-h-screen max-w-3xl mx-auto p-4 md:p-8">
-      <button onClick={() => router.push("/dashboard")} className="text-sm text-gray-400 mb-6">← Voltar</button>
+      <button onClick={() => router.push(r.missao_id ? `/missao/${r.missao_id}` : "/dashboard")} className="text-sm text-gray-400 mb-6">← Voltar</button>
 
       <div className="bg-[#13131a] border border-[#26262f] rounded-2xl p-6 mb-6">
         <div className="text-xs text-red-500 mb-1">HEADLINE</div>

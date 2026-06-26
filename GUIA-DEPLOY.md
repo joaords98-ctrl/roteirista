@@ -1,4 +1,4 @@
-# 🚀 Guia de Deploy — Roteiro Investigativo MVP
+# 🚀 Guia de Deploy — RoterizAI
 
 Você não precisa programar pra colocar isso no ar. Siga na ordem. Tempo estimado: **40-60 min** na primeira vez.
 

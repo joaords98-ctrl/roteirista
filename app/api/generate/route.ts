@@ -14,10 +14,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
     }
 
-    const { tema, material } = await req.json();
+    const { tema, material, missao_id } = await req.json();
     if (!tema || tema.trim().length < 3) {
       return NextResponse.json({ error: "Descreva o tema/apuração do roteiro." }, { status: 400 });
     }
+    if (!missao_id) {
+      return NextResponse.json({ error: "Roteiro precisa pertencer a uma missão." }, { status: 400 });
+    }
+
+    // Carregar contexto da Missão
+    const { data: missaoRow } = await supabase
+      .from("missoes")
+      .select("titulo, objetivo, publico, plataforma")
+      .eq("id", missao_id)
+      .eq("user_id", user.id)
+      .single();
 
     // Carregar perfil (Camada 2) do usuário
     const { data: perfilRow } = await supabase
@@ -40,7 +51,7 @@ export async function POST(req: NextRequest) {
         }
       : null;
 
-    const systemPrompt = montarSystemPrompt(perfil);
+    const systemPrompt = montarSystemPrompt(perfil, missaoRow);
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
 
@@ -92,6 +103,7 @@ Gere o roteiro completo seguindo a metodologia. Responda APENAS em JSON válido,
       .from("roteiros")
       .insert({
         user_id: user.id,
+        missao_id,
         tema,
         conteudo: roteiro,
         check_resultado: check,

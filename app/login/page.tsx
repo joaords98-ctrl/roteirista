@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-client";
@@ -31,7 +32,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-[#13131a] border border-[#26262f] rounded-2xl p-8">
         <div className="text-xs tracking-widest text-red-500 mb-1">CLASSIFICADO • ACESSO</div>
-        <h1 className="text-2xl font-bold mb-6">Roteiro Investigativo</h1>
+        <h1 className="text-2xl font-bold mb-6">RoterizAI</h1>
 
         <input
           className="w-full mb-3 px-4 py-3 bg-[#0a0a0f] border border-[#26262f] rounded-lg outline-none focus:border-red-500"
