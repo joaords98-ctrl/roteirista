@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = montarSystemPrompt(perfil, missaoRow);
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY não configurada na Vercel." }, { status: 500 });
+      return NextResponse.json({ error: "ANTHROPIC_API_KEY não configurada na Vercel." }, { status: 500 });
     }
 
     const userMessage = `APURAÇÃO / TEMA:
@@ -78,42 +78,37 @@ Gere o roteiro completo seguindo a metodologia. Responda APENAS em JSON válido,
   "notas_compliance": "observações sobre fontes/condicional/contraditório"
 }`;
 
-    const modelo = process.env.GEMINI_MODEL || "gemini-2.0-flash";
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: "user", parts: [{ text: userMessage }] }],
-          generationConfig: {
-            maxOutputTokens: 3000,
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
+    const aiRes = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 3000,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userMessage }],
+      }),
+    });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      console.error("Gemini error:", errText);
+    if (!aiRes.ok) {
+      const errText = await aiRes.text();
+      console.error("Anthropic error:", errText);
       let detalhe = errText;
       try {
         const ej = JSON.parse(errText);
         detalhe = ej?.error?.message || errText;
       } catch {}
       return NextResponse.json(
-        { error: `Erro Gemini (${geminiRes.status}): ${detalhe}` },
+        { error: `Erro IA (${aiRes.status}): ${detalhe}` },
         { status: 502 }
       );
     }
 
-    const geminiData = await geminiRes.json();
-    const raw = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const aiData = await aiRes.json();
+    const raw = aiData?.content?.[0]?.text || "";
     const clean = raw.replace(/```json|```/g, "").trim();
 
     let roteiro;
