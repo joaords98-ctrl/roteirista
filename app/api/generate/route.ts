@@ -78,11 +78,15 @@ Gere o roteiro completo seguindo a metodologia. Responda APENAS em JSON válido,
   "notas_compliance": "observações sobre fontes/condicional/contraditório"
 }`;
 
+    const modelo = process.env.GEMINI_MODEL || "gemini-2.0-flash";
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
         body: JSON.stringify({
           system_instruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: "user", parts: [{ text: userMessage }] }],
@@ -97,7 +101,15 @@ Gere o roteiro completo seguindo a metodologia. Responda APENAS em JSON válido,
     if (!geminiRes.ok) {
       const errText = await geminiRes.text();
       console.error("Gemini error:", errText);
-      return NextResponse.json({ error: "Erro ao chamar a IA (Gemini). Verifique a chave e a cota." }, { status: 502 });
+      let detalhe = errText;
+      try {
+        const ej = JSON.parse(errText);
+        detalhe = ej?.error?.message || errText;
+      } catch {}
+      return NextResponse.json(
+        { error: `Erro Gemini (${geminiRes.status}): ${detalhe}` },
+        { status: 502 }
+      );
     }
 
     const geminiData = await geminiRes.json();
